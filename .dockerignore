@@ -1,0 +1,8 @@
+.git
+.venv
+__pycache__
+*.pyc
+.qoder
+frontend/node_modules
+frontend/dist
+.pytest_cache
