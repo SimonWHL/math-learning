@@ -5,15 +5,26 @@
 - [src/math_learning/web/main.py](file://src/math_learning/web/main.py)
 - [src/math_learning/core/generator.py](file://src/math_learning/core/generator.py)
 - [src/math_learning/generator/word.py](file://src/math_learning/generator/word.py)
+- [src/math_learning/grader/checker.py](file://src/math_learning/grader/checker.py)
 - [frontend/src/api.ts](file://frontend/src/api.ts)
 - [frontend/src/App.tsx](file://frontend/src/App.tsx)
 - [frontend/src/components/ConfigPanel.tsx](file://frontend/src/components/ConfigPanel.tsx)
+- [frontend/src/components/GradeResult.tsx](file://frontend/src/components/GradeResult.tsx)
 - [frontend/src/components/ProblemPreview.tsx](file://frontend/src/components/ProblemPreview.tsx)
 - [pyproject.toml](file://pyproject.toml)
 - [Dockerfile](file://Dockerfile)
 - [docker-compose.yml](file://docker-compose.yml)
 - [tests/test_generator.py](file://tests/test_generator.py)
+- [tests/test_grader.py](file://tests/test_grader.py)
 </cite>
+
+## 更新摘要
+**变更内容**
+- 新增除法带余数运算类型支持
+- 在ProblemOut模型中添加remainder字段
+- 在GradeResultOut模型中添加correct_remainder和student_remainder字段
+- 更新API接口以支持完整的除法运算批改功能
+- 增强前端GradeResult组件以处理余数输入
 
 ## 目录
 1. [简介](#简介)
@@ -31,7 +42,7 @@
 
 ## 简介
 
-这是一个基于Python FastAPI构建的数学练习题生成Web应用。该系统提供100以内的加减法口算题生成服务，支持在线预览和Word文档下载两种使用方式。应用采用前后端分离架构，后端提供RESTful API接口，前端使用React + TypeScript开发用户界面。
+这是一个基于Python FastAPI构建的数学练习题生成Web应用。该系统提供100以内的加减法口算题生成服务，现已扩展支持除法带余数运算。应用采用前后端分离架构，后端提供RESTful API接口，前端使用React + TypeScript开发用户界面。系统支持在线预览、Word文档下载以及OCR自动批改功能。
 
 ## 项目结构
 
@@ -43,12 +54,14 @@ subgraph "前端层 (frontend)"
 FE_API[api.ts<br/>API调用封装]
 FE_APP[App.tsx<br/>主应用组件]
 FE_CONFIG[ConfigPanel.tsx<br/>配置面板]
+FE_GRADE[GradeResult.tsx<br/>批改结果显示]
 FE_PREVIEW[ProblemPreview.tsx<br/>题目预览]
 end
 subgraph "后端层 (backend)"
 BE_MAIN[web/main.py<br/>FastAPI应用]
 BE_CORE[core/generator.py<br/>核心生成器]
 BE_WORD[generator/word.py<br/>Word文档生成]
+BE_GRADER[grader/checker.py<br/>答案批改器]
 end
 subgraph "基础设施"
 PY_PROJECT[pyproject.toml<br/>依赖管理]
@@ -59,13 +72,16 @@ FE_APP --> FE_API
 FE_API --> BE_MAIN
 BE_MAIN --> BE_CORE
 BE_MAIN --> BE_WORD
+BE_MAIN --> BE_GRADER
 BE_CORE --> BE_WORD
+BE_GRADER --> BE_CORE
 ```
 
 **图表来源**
-- [src/math_learning/web/main.py:1-102](file://src/math_learning/web/main.py#L1-L102)
-- [src/math_learning/core/generator.py:1-102](file://src/math_learning/core/generator.py#L1-L102)
+- [src/math_learning/web/main.py:1-297](file://src/math_learning/web/main.py#L1-L297)
+- [src/math_learning/core/generator.py:1-99](file://src/math_learning/core/generator.py#L1-L99)
 - [src/math_learning/generator/word.py:1-88](file://src/math_learning/generator/word.py#L1-L88)
+- [src/math_learning/grader/checker.py:1-228](file://src/math_learning/grader/checker.py#L1-L228)
 
 **章节来源**
 - [pyproject.toml:1-29](file://pyproject.toml#L1-L29)
@@ -83,7 +99,7 @@ BE_CORE --> BE_WORD
 - 错误处理和异常管理
 
 #### 数学问题生成器
-- 支持加法和减法运算
+- 支持加法、减法和除法带余数运算
 - 随机种子控制可重现性
 - 范围限制在100以内
 - 数据类封装问题结构
@@ -94,10 +110,17 @@ BE_CORE --> BE_WORD
 - 四列网格排版
 - 自定义字体和间距
 
+#### 答案批改器
+- OCR识别结果处理
+- 多种运算类型的答案比较
+- 图像标注和评分计算
+- 余数验证支持
+
 **章节来源**
 - [src/math_learning/web/main.py:18-26](file://src/math_learning/web/main.py#L18-L26)
 - [src/math_learning/core/generator.py:11-31](file://src/math_learning/core/generator.py#L11-L31)
 - [src/math_learning/generator/word.py:22-87](file://src/math_learning/generator/word.py#L22-L87)
+- [src/math_learning/grader/checker.py:15-35](file://src/math_learning/grader/checker.py#L15-L35)
 
 ### 前端核心组件
 
@@ -110,17 +133,19 @@ BE_CORE --> BE_WORD
 #### 用户界面组件
 - 配置面板（题目数量、运算类型）
 - 题目预览网格
+- 批改结果显示（含余数输入）
 - 实时状态反馈
 - 响应式设计
 
 **章节来源**
-- [frontend/src/api.ts:1-51](file://frontend/src/api.ts#L1-L51)
+- [frontend/src/api.ts:1-126](file://frontend/src/api.ts#L1-L126)
 - [frontend/src/components/ConfigPanel.tsx:1-88](file://frontend/src/components/ConfigPanel.tsx#L1-L88)
+- [frontend/src/components/GradeResult.tsx:1-107](file://frontend/src/components/GradeResult.tsx#L1-L107)
 - [frontend/src/components/ProblemPreview.tsx:1-38](file://frontend/src/components/ProblemPreview.tsx#L1-L38)
 
 ## 架构概览
 
-系统采用经典的三层架构模式：
+系统采用经典的三层架构模式，现已扩展支持除法运算：
 
 ```mermaid
 graph TB
@@ -135,24 +160,32 @@ end
 subgraph "业务逻辑层"
 Generator[问题生成器]
 WordGen[Word文档生成器]
+Grader[答案批改器]
+OCR[OCR识别引擎]
 end
 subgraph "数据层"
 Memory[内存数据结构]
 Storage[磁盘存储]
+Database[数据库]
 end
 Browser --> React
 React --> FastAPI
 FastAPI --> CORS
 FastAPI --> Generator
 FastAPI --> WordGen
+FastAPI --> Grader
 Generator --> Memory
 WordGen --> Storage
+Grader --> OCR
+Grader --> Memory
+Grader --> Database
 ```
 
 **图表来源**
 - [src/math_learning/web/main.py:55-95](file://src/math_learning/web/main.py#L55-L95)
-- [src/math_learning/core/generator.py:65-102](file://src/math_learning/core/generator.py#L65-L102)
+- [src/math_learning/core/generator.py:65-99](file://src/math_learning/core/generator.py#L65-L99)
 - [src/math_learning/generator/word.py:22-87](file://src/math_learning/generator/word.py#L22-L87)
+- [src/math_learning/grader/checker.py:61-107](file://src/math_learning/grader/checker.py#L61-L107)
 
 ## 详细组件分析
 
@@ -171,14 +204,15 @@ API->>Gen : generate_problems()
 Gen->>Core : 随机数生成
 Core->>Core : 运算类型选择
 Core->>Core : 数值范围验证
+Core->>Core : 余数计算除法
 Core-->>Gen : 返回问题列表
 Gen-->>API : 问题对象数组
-API-->>Client : JSON响应
+API-->>Client : JSON响应含余数
 ```
 
 **图表来源**
-- [src/math_learning/web/main.py:55-73](file://src/math_learning/web/main.py#L55-L73)
-- [src/math_learning/core/generator.py:65-102](file://src/math_learning/core/generator.py#L65-L102)
+- [src/math_learning/web/main.py:66-84](file://src/math_learning/web/main.py#L66-L84)
+- [src/math_learning/core/generator.py:65-99](file://src/math_learning/core/generator.py#L65-L99)
 
 #### 下载Word文档接口
 ```mermaid
@@ -190,7 +224,7 @@ participant Word as Word生成器
 participant Buffer as 内存缓冲区
 Client->>API : POST /api/download
 API->>Gen : generate_problems()
-Gen-->>API : 问题列表
+Gen-->>API : 问题列表含余数
 API->>Word : generate_word()
 Word->>Buffer : 创建DOCX文档
 Buffer-->>Word : 字节流
@@ -199,11 +233,34 @@ API-->>Client : 流式响应
 ```
 
 **图表来源**
-- [src/math_learning/web/main.py:76-95](file://src/math_learning/web/main.py#L76-L95)
+- [src/math_learning/web/main.py:87-106](file://src/math_learning/web/main.py#L87-L106)
 - [src/math_learning/generator/word.py:22-87](file://src/math_learning/generator/word.py#L22-L87)
 
+#### 答案批改接口
+```mermaid
+sequenceDiagram
+participant Client as 客户端
+participant API as FastAPI接口
+participant Gen as 生成器
+participant OCR as OCR引擎
+participant Checker as 批改器
+Client->>API : POST /api/grade
+API->>Gen : generate_problems()
+Gen-->>API : 生成问题含余数
+API->>OCR : OCR识别
+OCR-->>API : 学生答案含余数
+API->>Checker : check_answers()
+Checker->>Checker : 验证商和余数
+Checker-->>API : 批改结果
+API-->>Client : 批改响应含余数
+```
+
+**图表来源**
+- [src/math_learning/web/main.py:158-236](file://src/math_learning/web/main.py#L158-L236)
+- [src/math_learning/grader/checker.py:61-107](file://src/math_learning/grader/checker.py#L61-L107)
+
 **章节来源**
-- [src/math_learning/web/main.py:55-95](file://src/math_learning/web/main.py#L55-L95)
+- [src/math_learning/web/main.py:66-236](file://src/math_learning/web/main.py#L66-L236)
 
 ### 数据结构设计
 
@@ -214,6 +271,7 @@ class Operation {
 <<enumeration>>
 ADD
 SUBTRACT
+DIVIDE_REMAINDER
 }
 class Problem {
 +int id
@@ -221,6 +279,7 @@ class Problem {
 +int operand_b
 +Operation operation
 +int answer
++int remainder
 +expression() str
 }
 class GenerateRequest {
@@ -232,6 +291,7 @@ class ProblemOut {
 +int id
 +str expression
 +int answer
++int remainder
 }
 class GenerateResponse {
 +ProblemOut[] problems
@@ -244,11 +304,11 @@ ProblemOut --> Problem : maps to
 
 **图表来源**
 - [src/math_learning/core/generator.py:11-31](file://src/math_learning/core/generator.py#L11-L31)
-- [src/math_learning/web/main.py:29-53](file://src/math_learning/web/main.py#L29-L53)
+- [src/math_learning/web/main.py:50-64](file://src/math_learning/web/main.py#L50-L64)
 
 **章节来源**
 - [src/math_learning/core/generator.py:16-31](file://src/math_learning/core/generator.py#L16-L31)
-- [src/math_learning/web/main.py:29-53](file://src/math_learning/web/main.py#L29-L53)
+- [src/math_learning/web/main.py:50-64](file://src/math_learning/web/main.py#L50-L64)
 
 ### 前端交互流程
 
@@ -262,10 +322,13 @@ Validate --> |有效| EnableButtons[启用操作按钮]
 Validate --> |无效| DisableButtons[禁用操作按钮]
 EnableButtons --> GenerateClick[点击预览题目]
 EnableButtons --> DownloadClick[点击下载Word]
+EnableButtons --> GradeClick[点击批改图片]
 GenerateClick --> APICall[调用API生成]
 DownloadClick --> APIDownload[调用API下载]
+GradeClick --> APIGrade[调用API批改]
 APICall --> Loading[显示加载状态]
 APIDownload --> Loading
+APIGrade --> Loading
 Loading --> Success[更新UI状态]
 Success --> End([完成])
 ```
@@ -274,8 +337,31 @@ Success --> End([完成])
 - [frontend/src/components/ConfigPanel.tsx:10-87](file://frontend/src/components/ConfigPanel.tsx#L10-L87)
 - [frontend/src/App.tsx:14-37](file://frontend/src/App.tsx#L14-L37)
 
+#### 批改结果显示组件
+```mermaid
+flowchart TD
+Start([显示批改结果]) --> CheckRemainder{是否为除法题}
+CheckRemainder --> |是| ShowRemainder[显示商和余数输入框]
+CheckRemainder --> |否| ShowAnswer[仅显示答案输入框]
+ShowRemainder --> EditAnswer[编辑商输入框]
+ShowRemainder --> EditRemainder[编辑余数输入框]
+ShowAnswer --> EditAnswer
+EditAnswer --> UpdateState[更新状态]
+EditRemainder --> UpdateState
+UpdateState --> Recheck[重新批改]
+Recheck --> APICall[调用API重新批改]
+APICall --> Loading[显示加载状态]
+Loading --> Result[更新批改结果]
+Result --> End([完成])
+```
+
+**图表来源**
+- [frontend/src/components/GradeResult.tsx:12-33](file://frontend/src/components/GradeResult.tsx#L12-L33)
+- [frontend/src/api.ts:55-77](file://frontend/src/api.ts#L55-L77)
+
 **章节来源**
 - [frontend/src/components/ConfigPanel.tsx:1-88](file://frontend/src/components/ConfigPanel.tsx#L1-L88)
+- [frontend/src/components/GradeResult.tsx:1-107](file://frontend/src/components/GradeResult.tsx#L1-L107)
 - [frontend/src/App.tsx:1-63](file://frontend/src/App.tsx#L1-L63)
 
 ## API接口规范
@@ -286,13 +372,36 @@ Success --> End([完成])
 |------|------|----------|--------|--------|
 | POST | `/api/generate` | 生成数学题目并返回JSON | [GenerateRequest](#请求体规范) | [GenerateResponse](#响应体规范) |
 | POST | `/api/download` | 生成Word文档并下载 | [GenerateRequest](#请求体规范) | Stream |
+| POST | `/api/grade` | 批改学生作业照片 | [GradeRequest](#批改请求体规范) | [GradeResponse](#批改响应体规范) |
+| POST | `/api/grade/recheck` | 重新批改手动修正的答案 | [RecheckRequest](#重新批改请求体规范) | [GradeResponse](#批改响应体规范) |
 
 ### 请求体规范
 
 #### GenerateRequest
 - `count`: number (1-200，默认20)
-- `operations`: string[] (默认['add','subtract'])
+- `operations`: string[] (默认['add','subtract']，现支持['add','subtract','divide_remainder'])
 - `seed`: number (可选，用于可重现性)
+
+#### GradeRequest
+- `image`: File (作业照片)
+- `count`: number (题目数量)
+- `operations`: string[] (运算类型数组)
+- `seed`: number (可选，用于重现相同题目)
+- `ocr_mode`: string (本地或云端OCR)
+- `api_key`: string (云端OCR密钥)
+- `base_url`: string (云端OCR地址)
+- `model`: string (OCR模型)
+
+#### RecheckRequest
+- `problems`: [RecheckStudentAnswer[]](#重新批改学生答案)
+- `count`: number
+- `operations`: string[]
+- `seed`: number
+
+#### RecheckStudentAnswer
+- `id`: number
+- `student_answer`: string (商)
+- `student_remainder`: string (余数)
 
 ### 响应体规范
 
@@ -302,8 +411,30 @@ Success --> End([完成])
 
 #### ProblemOut
 - `id`: number
-- `expression`: string (如："23 + 45 = ____")
-- `answer`: number
+- `expression`: string (如："23 + 45 = ____" 或 "23 ÷ 5 = ____ …… ____")
+- `answer`: number (商)
+- `remainder`: number (余数，除法时提供)
+
+#### GradeResponse
+- `problems`: GradeResultItem[]
+- `annotated_image`: string (批改后的图像Base64编码)
+- `score`: ScoreOut
+- `ocr_mode_used`: string
+
+#### GradeResultItem
+- `id`: number
+- `expression`: string
+- `correct_answer`: number (正确商)
+- `correct_remainder`: number (正确余数，除法时提供)
+- `student_answer`: string (学生商)
+- `student_remainder`: string (学生余数)
+- `is_correct`: boolean
+
+#### ScoreOut
+- `total`: number (总题数)
+- `correct`: number (正确数)
+- `wrong`: number (错误数)
+- `accuracy`: number (准确率百分比)
 
 ### 错误响应
 
@@ -312,10 +443,12 @@ Success --> End([完成])
 | 400 | Bad Request | 参数验证失败或业务逻辑错误 |
 | 422 | Validation Error | 请求格式不正确 |
 | 500 | Internal Server Error | 服务器内部错误 |
+| 502 | Bad Gateway | 云端OCR服务不可用 |
 
 **章节来源**
-- [src/math_learning/web/main.py:29-53](file://src/math_learning/web/main.py#L29-L53)
-- [src/math_learning/web/main.py:55-95](file://src/math_learning/web/main.py#L55-L95)
+- [src/math_learning/web/main.py:39-134](file://src/math_learning/web/main.py#L39-L134)
+- [src/math_learning/web/main.py:158-278](file://src/math_learning/web/main.py#L158-L278)
+- [frontend/src/api.ts:10-126](file://frontend/src/api.ts#L10-L126)
 
 ## 数据模型
 
@@ -326,6 +459,7 @@ Success --> End([完成])
 graph LR
 Operation[Operation枚举] --> ADD[ADD = "add"]
 Operation --> SUBTRACT[SUBTRACT = "subtract"]
+Operation --> DIVIDE_REMAINDER[DIVIDE_REMAINDER = "divide_remainder"]
 ```
 
 #### 问题对象结构
@@ -337,6 +471,7 @@ int operand_a
 int operand_b
 enum operation
 int answer
+int remainder
 computed expression
 }
 GENERATE_REQUEST {
@@ -348,23 +483,51 @@ PROBLEM_OUT {
 int id
 string expression
 int answer
+int remainder
 }
 GENERATE_RESPONSE {
 array problems
 int count
 }
+GRADE_RESULT_ITEM {
+int id
+string expression
+int correct_answer
+int correct_remainder
+string student_answer
+string student_remainder
+bool is_correct
+}
+STUDENT_ANSWER {
+int id
+string answer
+string remainder
+}
+GRADE_RESULT {
+int id
+string expression
+int correct_answer
+int correct_remainder
+string student_answer
+string student_remainder
+bool is_correct
+}
 GENERATE_REQUEST ||--o{ PROBLEM : generates
 PROBLEM ||--o{ PROBLEM_OUT : maps to
 PROBLEM_OUT ||--o{ GENERATE_RESPONSE : contains
+GRADE_RESULT_ITEM ||--o{ GRADE_RESPONSE : contains
+STUDENT_ANSWER ||--o{ GRADE_RESULT : compares with
 ```
 
 **图表来源**
 - [src/math_learning/core/generator.py:11-31](file://src/math_learning/core/generator.py#L11-L31)
-- [src/math_learning/web/main.py:40-53](file://src/math_learning/web/main.py#L40-L53)
+- [src/math_learning/web/main.py:50-64](file://src/math_learning/web/main.py#L50-L64)
+- [src/math_learning/grader/checker.py:15-35](file://src/math_learning/grader/checker.py#L15-L35)
 
 **章节来源**
 - [src/math_learning/core/generator.py:16-31](file://src/math_learning/core/generator.py#L16-L31)
-- [src/math_learning/web/main.py:40-53](file://src/math_learning/web/main.py#L40-L53)
+- [src/math_learning/web/main.py:50-64](file://src/math_learning/web/main.py#L50-L64)
+- [src/math_learning/grader/checker.py:15-35](file://src/math_learning/grader/checker.py#L15-L35)
 
 ## 错误处理
 
@@ -375,18 +538,29 @@ flowchart TD
 Request[接收请求] --> Validate[参数验证]
 Validate --> Valid{验证通过?}
 Valid --> |否| BadRequest[返回400错误]
-Valid --> |是| Generate[生成问题]
-Generate --> GenerateOK{生成成功?}
+Valid --> |是| Process[处理请求]
+Process --> Generate{生成操作?}
+Generate --> |是| GenerateProblems[生成问题]
+GenerateProblems --> GenerateOK{生成成功?}
 GenerateOK --> |否| ValueError[抛出ValueError]
 GenerateOK --> |是| Success[返回200响应]
+Generate --> |否| OCR{OCR操作?}
+OCR --> |是| RunOCR[执行OCR]
+RunOCR --> OCRSuccess{OCR成功?}
+OCRSuccess --> |否| CloudError[返回502错误]
+OCRSuccess --> |是| CheckAnswers[批改答案]
+CheckAnswers --> Success
+Process --> Success
 ValueError --> HTTPException[转换为HTTPException]
 HTTPException --> BadRequest
 Success --> End[结束]
+CloudError --> End
 BadRequest --> End
 ```
 
 **图表来源**
-- [src/math_learning/web/main.py:58-65](file://src/math_learning/web/main.py#L58-L65)
+- [src/math_learning/web/main.py:69-76](file://src/math_learning/web/main.py#L69-L76)
+- [src/math_learning/web/main.py:189-203](file://src/math_learning/web/main.py#L189-L203)
 - [src/math_learning/core/generator.py:83-90](file://src/math_learning/core/generator.py#L83-L90)
 
 ### 前端错误处理
@@ -397,6 +571,7 @@ BadRequest --> End
 - **HTTP状态错误**：检查resp.ok属性
 - **用户友好提示**：显示错误消息
 - **状态恢复**：错误后重置加载状态
+- **批改错误处理**：OCR失败时提供重试选项
 
 **章节来源**
 - [frontend/src/api.ts:26-29](file://frontend/src/api.ts#L26-L29)
@@ -420,6 +595,8 @@ Python[python:3.12-slim<br/>运行时环境]
 Frontend[构建的前端资源]
 Backend[Python源码]
 Dependencies[安装的依赖]
+OpenCV[OpenCV库<br/>用于图像处理]
+Tesseract[Tesseract OCR<br/>用于文字识别]
 end
 subgraph "运行时"
 Uvicorn[Uvicorn服务器]
@@ -430,9 +607,12 @@ Stage2 --> Python
 Node --> Frontend
 Python --> Backend
 Python --> Dependencies
+Dependencies --> OpenCV
+Dependencies --> Tesseract
 Frontend --> Uvicorn
 Backend --> Uvicorn
-Dependencies --> Uvicorn
+OpenCV --> Uvicorn
+Tesseract --> Uvicorn
 Uvicorn --> Port
 ```
 
@@ -453,6 +633,9 @@ Uvicorn --> Port
 - FastAPI 0.104+
 - uvicorn 0.24+
 - python-docx 1.1+
+- opencv-python 4.8+
+- numpy 1.24+
+- tesseract 4.1+ (可选，用于本地OCR)
 
 **章节来源**
 - [docker-compose.yml:1-9](file://docker-compose.yml#L1-L9)
@@ -466,6 +649,7 @@ Uvicorn --> Port
 2. **内存管理**：Word文档生成使用BytesIO内存缓冲
 3. **批量处理**：单次请求最多生成200个题目
 4. **缓存策略**：无持久化缓存，确保每次生成最新数据
+5. **除法运算优化**：余数计算采用直接公式避免循环
 
 ### 前端性能优化
 
@@ -473,6 +657,7 @@ Uvicorn --> Port
 2. **条件渲染**：空状态和加载状态的智能显示
 3. **事件处理**：防抖和节流机制减少不必要的API调用
 4. **资源加载**：静态文件服务优化CDN缓存
+5. **批改组件优化**：余数输入框按需显示
 
 ### 后端性能特性
 
@@ -480,6 +665,7 @@ Uvicorn --> Port
 2. **流式响应**：Word文档使用StreamingResponse降低内存占用
 3. **CORS优化**：开发环境允许所有来源访问
 4. **静态文件**：生产环境集成静态文件服务
+5. **OCR优化**：支持本地和云端OCR，可根据负载选择
 
 ## 故障排除指南
 
@@ -489,16 +675,19 @@ Uvicorn --> Port
 - **404 Not Found**: 检查API路径是否正确
 - **422 Validation Error**: 验证请求参数格式
 - **500 Internal Server Error**: 查看服务器日志
+- **502 Bad Gateway**: 检查云端OCR服务状态
 
 #### 前端问题
 - **无法连接服务器**: 检查CORS配置和网络连接
 - **界面无响应**: 检查JavaScript错误控制台
 - **样式缺失**: 确认静态文件服务正常运行
+- **批改功能异常**: 检查OCR配置和图像格式
 
 #### Docker部署问题
 - **端口冲突**: 检查主机端口占用情况
 - **依赖安装失败**: 清理pip缓存重新安装
 - **构建失败**: 检查网络连接和镜像仓库可用性
+- **OCR功能缺失**: 确认OpenCV和Tesseract安装
 
 ### 调试工具
 
@@ -506,32 +695,39 @@ Uvicorn --> Port
 系统包含完整的测试套件：
 - 核心生成器测试
 - Word文档生成测试
-- API端点测试
+- 答案批改测试
+- OCR功能测试
 - 边界条件测试
 
 #### 开发工具
 - pytest单元测试框架
 - ruff代码质量检查
 - httpx异步HTTP客户端
+- OpenCV图像处理调试
 
 **章节来源**
-- [tests/test_generator.py:105-141](file://tests/test_generator.py#L105-L141)
+- [tests/test_generator.py:70-99](file://tests/test_generator.py#L70-L99)
+- [tests/test_grader.py:61-111](file://tests/test_grader.py#L61-L111)
 
 ## 总结
 
-本Web API接口系统提供了完整的数学练习题生成功能，具有以下特点：
+本Web API接口系统提供了完整的数学练习题生成功能，现已扩展支持除法带余数运算，具有以下特点：
 
 ### 技术优势
 - **模块化设计**：清晰的分层架构便于维护和扩展
 - **类型安全**：Pydantic模型和TypeScript接口确保数据完整性
 - **异步处理**：FastAPI提供高性能的异步API服务
 - **容器化部署**：Docker多阶段构建简化部署流程
+- **OCR集成**：支持本地和云端OCR识别
+- **余数处理**：完整的除法运算批改功能
 
 ### 功能特性
 - **灵活配置**：支持自定义题目数量和运算类型
-- **多种输出**：JSON预览和Word文档下载双重模式
+- **多种输出**：JSON预览、Word文档下载和OCR批改
 - **可重现性**：随机种子确保结果一致性
 - **用户友好**：直观的React前端界面
+- **余数输入**：批改界面支持商和余数分别输入
+- **图像标注**：自动标注正确答案和错误标记
 
 ### 扩展建议
 1. **数据库集成**：添加用户偏好和历史记录存储
@@ -539,5 +735,6 @@ Uvicorn --> Port
 3. **国际化支持**：多语言界面和内容
 4. **性能监控**：添加APM和日志分析工具
 5. **API版本控制**：支持向后兼容的API演进
+6. **移动端适配**：优化移动设备上的使用体验
 
-该系统为教育技术应用提供了良好的基础架构，易于根据具体需求进行定制和扩展。
+该系统为教育技术应用提供了良好的基础架构，易于根据具体需求进行定制和扩展。新增的除法运算支持使得系统能够满足更广泛的数学教学需求。
