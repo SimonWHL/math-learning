@@ -73,6 +73,23 @@ class TestGenerateProblems:
         p = Problem(id=1, operand_a=87, operand_b=34, operation=Operation.SUBTRACT, answer=53)
         assert p.expression == "87 - 34 = ____"
 
+    def test_divide_remainder_constraints(self):
+        """Divisor in [2,9], quotient in [1,9], remainder in [1, divisor-1]."""
+        problems = generate_problems(count=200, operations=[Operation.DIVIDE_REMAINDER], seed=42)
+        for p in problems:
+            assert p.operation == Operation.DIVIDE_REMAINDER
+            assert 2 <= p.operand_b <= 9, f"divisor {p.operand_b} out of range"
+            assert 1 <= p.answer <= 9, f"quotient {p.answer} out of range"
+            assert p.remainder is not None
+            assert 1 <= p.remainder <= p.operand_b - 1
+            # Verify: dividend = divisor * quotient + remainder
+            assert p.operand_a == p.operand_b * p.answer + p.remainder
+
+    def test_divide_remainder_expression(self):
+        p = Problem(id=1, operand_a=23, operand_b=5, operation=Operation.DIVIDE_REMAINDER, answer=4, remainder=3)
+        assert "÷" in p.expression
+        assert "……" in p.expression
+
 
 class TestGenerateWord:
     """Tests for Word document generation."""

@@ -43,6 +43,7 @@ class ProblemOut(BaseModel):
     id: int
     expression: str
     answer: int
+    remainder: Optional[int] = None
 
 
 class GenerateResponse(BaseModel):
@@ -66,7 +67,7 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
 
     return GenerateResponse(
         problems=[
-            ProblemOut(id=p.id, expression=p.expression, answer=p.answer)
+            ProblemOut(id=p.id, expression=p.expression, answer=p.answer, remainder=p.remainder)
             for p in problems
         ],
         count=len(problems),

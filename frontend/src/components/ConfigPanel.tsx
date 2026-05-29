@@ -11,15 +11,17 @@ export function ConfigPanel({ onGenerate, onDownload, loading, downloading }: Co
   const [count, setCount] = useState(20);
   const [addEnabled, setAddEnabled] = useState(true);
   const [subEnabled, setSubEnabled] = useState(true);
+  const [divEnabled, setDivEnabled] = useState(false);
 
   const getOperations = (): string[] => {
     const ops: string[] = [];
     if (addEnabled) ops.push('add');
     if (subEnabled) ops.push('subtract');
+    if (divEnabled) ops.push('divide_remainder');
     return ops.length > 0 ? ops : ['add'];
   };
 
-  const hasValidOps = addEnabled || subEnabled;
+  const hasValidOps = addEnabled || subEnabled || divEnabled;
 
   return (
     <div className="config-panel">
@@ -62,6 +64,14 @@ export function ConfigPanel({ onGenerate, onDownload, loading, downloading }: Co
               onChange={(e) => setSubEnabled(e.target.checked)}
             />
             减法 (a - b)
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={divEnabled}
+              onChange={(e) => setDivEnabled(e.target.checked)}
+            />
+            有余数除法 (a ÷ b = …… )
           </label>
         </div>
       </div>
